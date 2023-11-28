@@ -2,13 +2,14 @@ use std::{
     any::Any,
     boxed::Box,
     collections::HashMap,
-    fmt::{self, format},
+    fmt::{self},
     io::Error,
     io::{BufRead, BufReader, ErrorKind, Write},
     net::{TcpListener, TcpStream},
     sync::OnceLock,
 };
 
+use json::JsonValue;
 use regex::Regex;
 
 use crate::rest_server;
@@ -35,7 +36,8 @@ pub struct HttpRequest<'a> {
     body: String,
 }
 
-type HandlerFunc = fn(req: HttpRequest) -> Result<Box<dyn Any>, Error>;
+// type HandlerReturn = impl json::JsonValue;
+type HandlerFunc = fn(req: HttpRequest) -> Result<JsonValue, Error>;
 
 /// RestServer implements a Restful HTTP server.
 pub struct RestServer<'a> {
@@ -208,14 +210,14 @@ impl<'a> RestServer<'a> {
         };
 
         let resp_str = match resp {
-            Ok(r) => format!("{:#?}", r),
+            Ok(r) => json::stringify(r),
             Err(err) => format!("error: {err}"),
         };
 
         println!("Response String: {:?}", resp_str);
 
         // Write to the stream and close
-        let response = format!("HTTP/1.1 200 OK\n{resp_str}\r\n\r\n");
+        let response = format!("HTTP/1.1 200 OK\r\n\r\n{resp_str}\n");
 
         stream.write_all(response.as_bytes())?;
 
@@ -224,7 +226,7 @@ impl<'a> RestServer<'a> {
 }
 
 // Handler for /ping
-pub fn handle_ping(req: HttpRequest) -> Result<Box<dyn Any>, Error> {
+pub fn handle_ping(req: HttpRequest) -> Result<JsonValue, Error> {
     println!("Handling ping");
-    return Ok(Box::new("pong"));
+    return Ok(JsonValue::String("{\"data\": \"pong\"}".to_string()));
 }
